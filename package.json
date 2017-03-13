@@ -1,0 +1,13 @@
+{
+  "name": "test-webpack",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "build": "rimraf dist/bundle.js && webpack src/index.js dist/bundle.js"
+  },
+  "devDependencies": {
+    "rimraf": "^2.6.1",
+    "webpack": "^2.2.1"
+  }
+}
