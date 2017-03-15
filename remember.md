@@ -257,3 +257,50 @@ module.exports = {
 }
 
 ```
+
+## Tree-shaking
+
+### WTF?
+O tree-shaking foi uma forma que RollupJS (module bundle) criou de fazer a exclusão de código javascript morto. Mas o que é um código morto? Bem, um código morto é aquele aquela função escrita e nunca chamada em outra parte do código, é aquele if que só pode dar false.
+
+[Neste artigo](https://medium.com/@Rich_Harris/tree-shaking-versus-dead-code-elimination-d3765df85c80#.twae6q27z), o Rich Harris (criador do RollupJS), explica a diferença entre excluir um código morto ou fazer um Tree-shaking. Basicamente, no primeiro caso, você remove o código obsoleto depois do bundle pronto, e no segundo, você primeiro faz a análise do código, pra daí então gerar o bundler.
+
+Segundo ele, os testes dos dois casos mostraram que fazer o Tree-shaking gera melhores resultados.
+
+### Ok, mas e a vantagem?
+Bem, a vantagem dessa abordagem é justamente gerar um bundle com menos código, ou seja, as funções que não são usadas (mas precisam existir), não são necessárias na nossa aplicação. Veja um exemplo:
+
+```javascript
+/*mathStuffs.js*/
+export function sum(a,b) { return a + b }
+export function sub(a,b) { return a - b }
+export function mult(a,b) { return a * b }
+```
+
+```javascript
+/*index.js*/
+import {mult} from './mathSuffs'
+
+console.log(mult(2,3));
+```
+
+Como estamos utilizando o babel para gerar o módulo, ele vai pegar nosso código e colocar nos moldes do ES2015. Para fazer a conversão da importação de módulos, ele usa o padrão do CommonJS. Esse por sua vez, não vai fazer nada semelhante ao Tree-shaking, e no fim, vai gerar um bundle com as 3 funções, mesmo que utilizamos apenas 1 delas.
+
+Para evitar esse tipo de comportamento, precisamos - no `.babelrc` - desabilitar a opção dos módulos. Ele ficará da seguinte forma:
+
+```json
+{
+  "presets": [
+    ["es2015", {
+      "modules": false //Novo código aqui
+    }], "stage-0"
+  ]
+}
+```
+
+Agora, quando o webpack for gerar o bundle, ele passará a utilizar o conceito do Tree-shaking. Mas isso não é o suficiente. Para fazer uso de tal estratégia, teremos que configurar no webpack o uso do UgglifyJS (tema do próximo tópico).
+
+## UglifyJS
+
+Quando vamos fazer a build de um projeto, é necessário eliminar o código morto (não usado), comentários, remover identação, trocar os nomes das funções. Mas faz isso na mão é impraticável, assim, utilizaremos o uglify do próprio webpack.
+
