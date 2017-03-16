@@ -1,5 +1,8 @@
 # Webpack
 
+## Intro
+...ESCREVER...
+
 ## webpack-dev-server
 O webpack-dev-server é uma ferramenta que permite a gente subir um servidor web em cima das configurações do webpack. Há duas formas de configurar: Live/hot Reload e Hot Module Replacement (HRM).
 
@@ -291,8 +294,8 @@ Para evitar esse tipo de comportamento, precisamos - no `.babelrc` - desabilitar
 ```json
 {
   "presets": [
-    ["es2015", {
-      "modules": false //Novo código aqui
+    ["es2015", { // Novo código aqui
+      "modules": false // Informa ao babel não fazer conversão de ES6 Modules -> CommonJS
     }], "stage-0"
   ]
 }
@@ -302,5 +305,238 @@ Agora, quando o webpack for gerar o bundle, ele passará a utilizar o conceito d
 
 ## UglifyJS
 
-Quando vamos fazer a build de um projeto, é necessário eliminar o código morto (não usado), comentários, remover identação, trocar os nomes das funções. Mas faz isso na mão é impraticável, assim, utilizaremos o uglify do próprio webpack.
+Quando vamos fazer a build de um projeto, é necessário eliminar identenção, comentários, trocar os nomes das funções, fazendo com que ele fique mais enxuto e mais leve. Mas faz isso na mão é impraticável, assim, sempre utilizamos alguma ferramenta que faça isso de forma automatizada.
 
+No caso do webpack, ele possui um pluggin nativo chamado UglifyJsPlugin. Como se trata de um pluggin, precisamos adiciona-lo na nossa lista de pluggins no `webpack.config.js` e passar algumas configurações:
+
+```javascript
+const path = require('path')
+const webpack = require('webpack')
+
+const PRODUCTION = process.env.NODE_ENV === 'production'
+
+const entry = PRODUCTION
+  ? ['./src/index.js']
+  : ['./src/index.js', 'webpack/hot/dev-server', 'webpack-dev-server/client?http://localhost:8080']
+
+const plugins = PRODUCTION
+  ? [new webpack.optimize.UglifyJsPlugin({ // NEW CODE!
+    comments: true, // Aqui dizemos se os comentários do código serão mantidos. Podemos setar para false.
+    mangle: false, // Ainda não entendi muito bem o que essa opção faz. (PESQUISAR E ESCREVER)
+    compress: { // Aqui entra algumas configurações a respeito da compressão
+      warnings: true // Ativa ou desativa os avisos sobre a remoção do código morto antes do bundle. Exemplo abaixo.
+    }
+  })]
+  : [new webpack.HotModuleReplacementPlugin()]
+
+module.exports = {
+  devtool: 'source-map',
+  entry: entry,
+  plugins: plugins,
+  module: {
+    loaders: [
+      {
+        test: /\.js$/,
+        loaders: ['babel-loader'],
+        exclude: '/node_modules/'
+      }
+    ]
+  },
+  output: {
+    path: path.join(__dirname, 'dist'),
+    publicPath: '/dist/',
+    filename: 'bundle.js'
+  }
+}
+
+```
+
+#### Warning: True
+
+Com o warning setado para true nas configurações, é gerado informações no console (durante o build), parecidas com as abaixo:
+```
+WARNING in bundle.js from UglifyJs
+Condition always false [bundle.js:88,4]
+Dropping unreachable code [bundle.js:89,2]
+Collapsing variable app [bundle.js:84,0]
+Side effects in initialization of unused variable __WEBPACK_IMPORTED_MODULE_0__Button__ [bundle.js:75,25]
+Dropping unused variable Button [bundle.js:97,4]
+Dropping unused variable _unused_webpack_default_export [bundle.js:106,40]
+Dropping unused function subtract [bundle.js:119,9]
+Dropping unused function multiply [bundle.js:122,9]
+```
+Mas isso é só questão de informar a você o que está sendo removido ou não. Se for setado para `false`, o bundle será gerado da mesma forma, ou seja, fazendo o Tree-shaking e removendo o código obsoleto.
+
+## Imagens e outros arquivos
+Por padrão, o webpack manuseia apenas os arquivos Javascript. Quando temos outros arquivos que precisam ser manipulados, como por exemplo, imagens, precisamos de outro loader para explicitar o que precisa ser feito. 
+
+Caso tertamos simplesmente fazer o import de uma imagem dentro de um módulo, dará um erro semelhante a esse:
+
+```bash
+ERROR in ./src/img/logonodejs.png
+Module parse failed: /home/raul/Desktop/test-webpack/src/img/logonodejs.png Unexpected character '�' (1:0)
+You may need an appropriate loader to handle this file type.
+(Source code omitted for this binary file)
+```
+
+Assim, para resolver este problema usaremos o [file-loader](https://github.com/webpack-contrib/file-loader).
+
+### File-loader
+Primeiro, precisamos adicionar a dependência ao projeto:
+```bash
+$ yarn add -S -D file-loader
+```
+
+Em seguida, precisamos configurar o Loader para o que queremos que ele faça. No caso do exemplo, informaremos como ele deverá tratar as imagens:
+
+```javascript
+/*webpack.config.js*/
+// código...
+module.exports = {
+  devtool: 'source-map',
+  entry: entry,
+  plugins: plugins,
+  module: {
+    loaders: [
+      {
+        test: /\.js$/,
+        loaders: ['babel-loader'],
+        exclude: '/node_modules/'
+      }, {
+        test: /\.(png|jpg|gif)$/, // Alteramos para pegar as imagens
+        loaders: ['file-loader'], // Definimos qual o loader que será usado para tal
+        exclude: '/node_modules/'
+      }
+    ]
+  },
+  output: {
+    path: path.join(__dirname, 'dist'),
+    publicPath: '/dist/',
+    filename: 'bundle.js'
+  }
+}
+// código...
+```
+Dessa forma, quando fizemos o uso dessa imagem algum lugar:
+
+```javascript
+/*Imagem module: Image.js*/
+const NodeLogo = require('./img/logonodejs.png')
+const Image = `<img src="${NodeLogo}"/>`
+
+export default Image
+```
+
+```javascript
+/*index.js*/
+import Image from './Image'
+
+const app = document.querySelector('#app')
+
+app.innerHTML = Image
+```
+
+A imagem será inserida no corpo do elemento `#app`. É interessante observar que ao rodarmos o `yarn dev`, gerará um console semelhante a esse:
+
+```bash
+Hash: 7af22981c6076cdaf65e
+Version: webpack 2.2.1
+Time: 3460ms
+                               Asset     Size  Chunks                    Chunk Names
+f8dab57d048fabd69ea16c67e1615b86.png  46.8 kB          [emitted]
+                           bundle.js   347 kB       0  [emitted]  [big]  main
+                       bundle.js.map   668 kB       0  [emitted]         main
+```
+
+Perceba que nossa imagem foi gerada com um **hash MD5** `f8dab57d048fabd69ea16c67e1615b86` + a extensão original do arquivo (`png`). Esse é o padrão do file-loader . Podemos fazer alterações com relação a isto, como veremos adiante.
+
+### Url-loader
+Em alguns casos, a imagem é bem pequena e podemos querer envia-la para nosso site como um texto, gerando assim, um base64 image. Porém, para isso ser possível, precisamos instalar uma outra dependência chamada [`url-loader`](https://github.com/webpack-contrib/url-loader).
+
+Ela trabalhada da mesma forma que o `file-loader`, entretando, será possível determinar a seguinte condição:
+> Para casos onde a imagem for menor que X (tamanho definido por você), será usado o URL-loader e transformado em base64. Caso seja maior, será utilizado o **file-loader** e a imagem será mandada para a pasta normalmente.
+
+#### Uso
+1. Precisamos instalar a dependência no projeto:
+
+```bash
+$ yarn add -S -D url-loader
+```
+
+2. Precisamos alterar nosso `loader` de imagens para utilizar primeiro o url-loader, ficando assim:
+```javascript
+/*webpack.config.js*/
+// código...
+module.exports = {
+  devtool: 'source-map',
+  entry: entry,
+  plugins: plugins,
+  module: {
+    loaders: [
+      {
+        test: /\.js$/,
+        loaders: ['babel-loader'],
+        exclude: '/node_modules/'
+      }, {
+        test: /\.(png|jpg|gif)$/, 
+        loaders: ['url-loader?limit=12000&name=images/[hash:12].[ext]'], // Uso do url-loader first
+        exclude: '/node_modules/'
+      }
+    ]
+  },
+  output: {
+    path: path.join(__dirname, 'dist'),
+    publicPath: '/dist/',
+    filename: 'bundle.js'
+  }
+}
+// código...
+```
+
+#### Parâmetros
+Na configuração acima, passamos alguns parâmetros para o `url-loader`
+```javascript
+// ...
+loaders: ['url-loader?limit=12000&name=images/[hash:12].[ext]']
+// ...
+```
+* **limit**: será o tamanho máximo do arquivo que se tornará um base64
+* **name**: podemos definir como será o nome. No caso, falamos que ele deverá criar os arquivos dentro da pasta **images** (`images/`), gerar um nome com o hash de 12 digitos (`[hash:12]`) com a extensão padrão do arquivo (`.[ext]`) 
+
+#### Adicionando um Icon
+Agora, para ver o resultado, basta pegar uma imagem com o tamanho menor do que definimos no **limit** e fazer uso. No caso, será um ícone:
+
+```javascript
+/*image.js*/
+const nodeLogo = require('./img/logonodejs.png')
+const nodeIcon = require('./img/nodejs-128.png')
+
+export const NodeLogo = `<img src="${nodeLogo}"/>`
+export const NodeIcon = `<img src="${nodeIcon}"/>`
+```
+
+```javascript
+import {NodeIcon, NodeLogo} from './Image'
+
+const app = document.querySelector('#app')
+
+const message = () => (`
+  <p>
+    ${NodeIcon}
+    ${NodeLogo}
+  </p>
+`)
+
+app.innerHTML = message()
+
+if (module.hot) {
+  module
+    .hot
+    .accept()
+}
+```
+
+Ao executar o `yarn dev`, teremos dois cenários:
+
+1. A imagem do ícone foi gerada com `data:image/png;base64` e o código com o valor dela foi pra dentro do bundle.
+2. A imagem maior, foi levada para a pasta `dist/images/` e seu nome foi gerado um hash de 12 caracteres.
