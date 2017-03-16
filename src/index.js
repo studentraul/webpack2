@@ -1,13 +1,15 @@
-import Button from './Button'
-import {sum} from './mathStuffs'
-
-/*const message = require('./message.js')*/
+import {NodeIcon, NodeLogo} from './Image'
 
 const app = document.querySelector('#app')
 
-app.innerHTML = sum(3, 4) // Button.button
+const message = () => (`
+  <p>
+    ${NodeIcon}
+    ${NodeLogo}
+  </p>
+`)
 
-/*Button.attachEv()*/
+app.innerHTML = message()
 
 if (module.hot) {
   module

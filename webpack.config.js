@@ -8,13 +8,17 @@ const entry = PRODUCTION
   : ['./src/index.js', 'webpack/hot/dev-server', 'webpack-dev-server/client?http://localhost:8080']
 
 const plugins = PRODUCTION
-  ? [new webpack.optimize.UglifyJsPlugin({
-    comments: true,
-    mangle: false,
-    compress: {
-      warnings: true
-    }
-  })]
+  ? [
+    new webpack
+      .optimize
+      .UglifyJsPlugin({
+        comments: true,
+        mangle: false,
+        compress: {
+          warnings: true
+        }
+      })
+  ]
   : [new webpack.HotModuleReplacementPlugin()]
 
 module.exports = {
@@ -26,6 +30,10 @@ module.exports = {
       {
         test: /\.js$/,
         loaders: ['babel-loader'],
+        exclude: '/node_modules/'
+      }, {
+        test: /\.(png|jpg|gif)$/,
+        loaders: ['url-loader?limit=12000&name=images/[hash:12].[ext]'],
         exclude: '/node_modules/'
       }
     ]
