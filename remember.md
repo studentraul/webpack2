@@ -3,6 +3,22 @@
 ## Intro
 ...ESCREVER...
 
+## rimraf
+O [rimraf](https://github.com/isaacs/rimraf) é uma biblioteca npm que permite a gente executar comandos UNIX através do nodejs. É possível também adiciona-lo como depedência e adicionar comandos unix e rodar em qualquer ambiente que execute o nodejs.
+ 
+A grande vantagem é que como ele roda em cima do Nodejs e o mesmo roda em qualquer plataforma, nossos scripts NPM não ficarão restritos a nenhum Sistema Operacional. Seu uso mais simples em um projeto é apagar arquivos e pastas, que é o que será implentado aqui.
+
+Antes de mais nada, criaremos um script para constuir (build) o projeto e outro para subir um servidor web de desenvolvimento. Assim, teremos dois scripts no **package.json**:
+
+```json
+  "scripts": {
+    "build": "rimraf rmdir dist/ && NODE_ENV='production' webpack",
+    "dev": "rimraf rmdir dist/ && NODE_ENV='development' node dev-server.js"
+  }
+```
+
+Uma boa prática, é sempre apagar o bundle gerado antes de gerar um novo com as novas correções e implementações. Por via de garantia de gerar todos os arquivos corretamente, utilizamos o comando `rimraf rmdir` para apagar a pasta `dist` (ficarão os arquivos que serão distribuidos) inteira, seguida da definição de ambiente e execução dos comandos.
+
 ## webpack-dev-server
 O webpack-dev-server é uma ferramenta que permite a gente subir um servidor web em cima das configurações do webpack. Há duas formas de configurar: Live/hot Reload e Hot Module Replacement (HRM).
 
@@ -12,10 +28,10 @@ Antes de entrar em cada um, é necessário fazer a instalação do Webpack-dev-s
 $ yarn add -S -D webpack-dev-server
 ```
 
-### Live/Hot Reload
+## Live/Hot Reload
 É um modo mais antigo (e mais fácil também) de fazer o carregamento. Assim, o webpack-dev-server(wpds) fica olhando para a os arquivos nas pastas e quando algum deles sofrer alteração, o _bundle_ é gerado novamente e a página é recarregada completamente.
 
-#### HOW-TO-DO
+### HOW-TO-DO
 
 Para esse módulo, você deve ter a configuração básica do webpack, como a abaixo:
 
@@ -42,10 +58,10 @@ module.exports = {
 
 Dessa maneira, o **webpack-dev-server** ficará observando qualquer alteração feita nos arquivos e quando a mesma ocorrer, um novo bundle será gerado e a página será recarregada.
 
-### Hot Module Replacement (HMR)
+## Hot Module Replacement (HMR)
 O Hot Module Replacement (HRM), é um pouco mais complexo, pois, ele trabalha com o esquema de **chunks**. Chunks são pequenos arquivos (enviados via stream) contendo uma informação. Assim, ele faz um canal websocket que monitora o estado da página e os arquivos do projeto. Quando algum arquivo for alterado, o **webpack-dev-server** vai criar um chunk apenas com a alteração e enviar para o navegador, alterando apenas os estados da página (conceito reativo) e recarregando somente aquele pedaço.
 
-#### HOW-TO-DO
+### HOW-TO-DO
 Para fazer dessa maneira, será necessário fazer algumas alterações na configuração do webpack e criar um arquivo de configuração para o **webpack-dev-server** chamado `dev-server.js`.
 
 1. Crie um arquivo no root do projeto chamado `dev-server.js` com o boilerplate abaixo:
