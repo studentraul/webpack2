@@ -319,6 +319,7 @@ Para evitar esse tipo de comportamento, precisamos - no `.babelrc` - desabilitar
 
 Agora, quando o webpack for gerar o bundle, ele passará a utilizar o conceito do Tree-shaking. Mas isso não é o suficiente. Para fazer uso de tal estratégia, teremos que configurar no webpack o uso do UgglifyJS (tema do próximo tópico).
 
+
 ## UglifyJS
 
 Quando vamos fazer a build de um projeto, é necessário eliminar identenção, comentários, trocar os nomes das funções, fazendo com que ele fique mais enxuto e mais leve. Mas faz isso na mão é impraticável, assim, sempre utilizamos alguma ferramenta que faça isso de forma automatizada.
@@ -367,7 +368,7 @@ module.exports = {
 
 ```
 
-#### Warning: True
+### Warning: True
 
 Com o warning setado para true nas configurações, é gerado informações no console (durante o build), parecidas com as abaixo:
 ```
@@ -382,6 +383,104 @@ Dropping unused function subtract [bundle.js:119,9]
 Dropping unused function multiply [bundle.js:122,9]
 ```
 Mas isso é só questão de informar a você o que está sendo removido ou não. Se for setado para `false`, o bundle será gerado da mesma forma, ou seja, fazendo o Tree-shaking e removendo o código obsoleto.
+
+### Ugglify config: Default
+
+Caso não queira se preocupar com nenhuma configuração, o plugin do ugglify fornece uma configuração padrão, basta não passarmos nenhum objeto para o mesmo. 
+
+```javascript
+/* webpack.config.js */
+
+// code...
+
+const plugins = PRODUCTION
+  ? [new webpack.optimize.UglifyJsPlugin()]
+  : [new webpack.HotModuleReplacementPlugin()]
+
+  // code...
+```
+
+As opções padrão podem ser consultadas [aqui](https://github.com/webpack-contrib/uglifyjs-webpack-plugin)
+
+### Uma sacada de mestre!
+
+Ainda podemos tirar bastante proveito do Tree-shaking que o **uglifyJS** nos provê. No webpack, é possível criar variáveis que poderão ser usadas em todo o contexto da aplicação através de definição do mesmo em formato de plugin. 
+
+Parece estranho, né? Mas podemos usar definindo algum comportamento ou ação que o código deve tomar em produção ou homologação. Lembra da regra do Tree-shaking? Pois é, ela vai valer aqui. Logo, se definirmos algo como:
+
+```javascript
+if(false){
+  console.log('totalmente false')
+}
+```
+
+Essa expressão nunca será `true`, logo, ela vai ser removida do programa.
+
+Agora, _let's to the code_:
+
+```javascript
+/* webpack.config.js */
+
+// ... code
+
+const PRODUCTION = process.env.NODE_ENV === 'production'
+const DEVELOPMENT = process.env.NODE_ENV === 'development' // Definição de uma variável para ambiente DEV
+
+// ... code
+
+// Manteremos os plugins normais
+const plugins = PRODUCTION
+  ? [
+    new webpack
+      .optimize
+      .UglifyJsPlugin({
+        comments: true,
+        mangle: false,
+        compress: {
+          warnings: true
+        }
+      })
+  ]
+  : [new webpack.HotModuleReplacementPlugin()]
+
+/*
+Aqui, adicionaremos as "variáveis globais", onde, será possível checar em qualquer parte do código
+e definir algum comportamento caso seja produção ou homologação
+*/
+plugins.push(
+  new webpack.DefinePlugin({
+    PRODUCTION: JSON.stringify(PRODUCTION),
+    DEVELOPMENT: JSON.stringify(DEVELOPMENT)
+  })
+)
+```
+
+No **index.js** temos um código que será executado somente se haver o módulo:
+
+```javascript
+/* index.js */
+// code...
+if (module.hot) {
+  module
+    .hot
+    .accept()
+}
+```
+
+Entretanto, se quisermos tira-lo de produção, agora podemos fazer da seguinte forma:
+```javascript
+/* index.js */
+// code...
+if(DEVELOPMENT){
+  if (module.hot) {
+    module
+      .hot
+      .accept()
+  }
+}
+```
+
+Ou seja, quando executarmos o build como `produção`, a variável `DEVELOPMENT` terá valor de falso sempre, consequentemente, a função será removida do código de Produção! :D
 
 ## Imagens e outros arquivos
 Por padrão, o webpack manuseia apenas os arquivos Javascript. Quando temos outros arquivos que precisam ser manipulados, como por exemplo, imagens, precisamos de outro loader para explicitar o que precisa ser feito. 
@@ -556,3 +655,51 @@ Ao executar o `yarn dev`, teremos dois cenários:
 
 1. A imagem do ícone foi gerada com `data:image/png;base64` e o código com o valor dela foi pra dentro do bundle.
 2. A imagem maior, foi levada para a pasta `dist/images/` e seu nome foi gerado um hash de 12 caracteres.
+
+## Estilos, por favor! 
+
+... PENDENTE ...
+
+Falamos de arquivos javascript, imagens, agora vamos falar do nosso querido CSS!
+
+```bash
+yarn add -S -D css-loader style-loader
+```
+
+```javascript
+import './style/style.css'
+```
+
+[webpack css documentation](https://webpack.js.org/guides/code-splitting-css/)
+
+[css local](https://medium.com/seek-developers/the-end-of-global-css-90d2a4a06284#.kueeczqxv)
+[style-loader](https://github.com/webpack-contrib/style-loader)
+
+```javascript
+/* webpack.config.js */
+
+// code... 
+
+module.exports = {
+  devtool: 'source-map',
+  entry: entry,
+  plugins: plugins,
+  module: {
+    // Outros Loaders
+     {
+        test: /\.css$/, // Pegando todos os arquivos que terminam com .css
+        loaders: [
+          'style-loader', 'css-loader' //Usando ambos Loaders
+        ],
+        exclude: '/node_modules/'
+      }
+    ]
+  },
+  output: {
+    path: path.join(__dirname, 'dist'),
+    publicPath: '/dist/',
+    filename: 'bundle.js'
+  }
+}
+
+```
