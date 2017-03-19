@@ -1,0 +1,9 @@
+body{
+  background-color: darkkhaki
+}
+
+:local(.box){
+  background-color: white;
+  padding: 1rem;
+  border: 1px solid brown
+}
