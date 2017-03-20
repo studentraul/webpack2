@@ -1,5 +1,5 @@
-/*import style from './style/global.css'*/
-const style = require('./style/global.css')
+import style from './style/global.css'
+/*const style = require('./style/global.css')*/
 
 /*import {NodeIcon, NodeLogo} from './Image'*/
 
@@ -9,8 +9,8 @@ const message = () => (`
   <p class="${style.box}">
     DEV: ${DEVELOPMENT.toString()}<br>
     PROD: ${PRODUCTION.toString()} <br>
-    Style: ${console.log(style)}<br>
   </p>
+  <div class="${style.caixa}">OII</div>
 `)
 
 app.innerHTML = message()

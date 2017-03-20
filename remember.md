@@ -1,7 +1,7 @@
 # Webpack
 
 ## Intro
-...ESCREVER...
+... PENDENTE ...
 
 ## rimraf
 O [rimraf](https://github.com/isaacs/rimraf) é uma biblioteca npm que permite a gente executar comandos UNIX através do nodejs. É possível também adiciona-lo como depedência e adicionar comandos unix e rodar em qualquer ambiente que execute o nodejs.
@@ -658,38 +658,154 @@ Ao executar o `yarn dev`, teremos dois cenários:
 
 ## Estilos, por favor! 
 
-... PENDENTE ...
-
-Falamos de arquivos javascript, imagens, agora vamos falar do nosso querido CSS!
+Falamos de arquivos javascript, imagens, agora vamos falar do nosso querido CSS! Como qualquer outro arquivo, precisamos utilizar um loader para fazer o processo de exportação e build dos mesmos. No caso do CSS, iremos usar o css-loader e o style-loader. Cada um tem sua função e seu papel, no qual escreverei separadamente. Entretanto, podemos já fazer a adição de ambas dependencias ao nosso projeto:
 
 ```bash
 yarn add -S -D css-loader style-loader
 ```
+### [css-loader](https://github.com/webpack-contrib/css-loader)
+O css-loader será responsável por interpretar os nossos arquivos css. Ou seja, ele é o loader que precisamos para que os nossos estilos sejam entendidos pelo webpack. Além disso, ele permite com que façamos a estilização com escopo.
 
-```javascript
-import './style/style.css'
+### [style-loader](https://github.com/webpack-contrib/style-loader)
+O style-loader será responsável por fazer a injeção dos estilos em uma tag dentro do `<head>`. A documentação do webpack recomenda que eles sejam usados em conjunto, o css-loader para interpretar os estilos e o style para colocar dentro do nosso bundle. 
+> Obs.: Iremos ver como fazer o <link> de um arquivo na parte dos plugins para CSS.
+
+### Escopo Local
+Além de fazer a interpretação dos arquivos, o css-loader também consegue conceder a possibilidade de definirmos um escopo para que os nossos estilos não entrem em conflito, utilizando o [css-modules](https://github.com/css-modules/css-modules). Abaixo, a sintaxe para isso:
+
+```css
+/* style/global.css */
+
+/* Sample
+:local(.nome-da-classe) {
+  seus-estilos-aqui;
+*/
+
+:local(.box) {
+  background-color: white;
+  padding: 1rem;
+  border: 1px solid black
+}
+}
 ```
 
-[webpack css documentation](https://webpack.js.org/guides/code-splitting-css/)
+Para usar, basta fazermos o import do arquivo, definindo um nome para ele (style) e pegando a classe que definimos no css (`:local(-nossa-classe)`):
 
-[css local](https://medium.com/seek-developers/the-end-of-global-css-90d2a4a06284#.kueeczqxv)
-[style-loader](https://github.com/webpack-contrib/style-loader)
+```javascript
+/* index.js */
+import style from './style/global.css'
+
+const app = document.querySelector('#app')
+
+const message = () => (`
+  <p class="${style.box}">
+    Hello world.
+  </p>
+  <div class="${style.caixa}">OII</div>
+`)
+
+app.innerHTML = message()
+```
+Ao fazer isso, o `css-loader` gerará um código hash exclusivo para aquele estilo, e onde a classe tiver sido usada (no caso no nosso `<p>`), será substituida por esse hash. Em contra partida, o `style-loader` vai pegar todo esse código e adicionar uma tag `<style>` com todos esses estilos no nosso header, ficando da seguinte maneira:
+
+```html
+<!-- code -->
+<head>
+  <!-- code -->
+  <style type="text/css">
+
+  ._13oPd1mClhRF-efz6nq8ws {
+    background-color: white;
+    padding: 1rem;
+    border: 1px solid brown
+  }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <p class="_13oPd1mClhRF-efz6nq8ws">
+      Hello world
+    </p>
+  </div>
+</body>
+```
+
+Resumindo, o `css-moduler` leu o `:local`, gerou o hash `._13oPd1mClhRF-efz6nq8ws` como nome da classe e substituiu onde a classe de nosso elemento `p` por `._13oPd1mClhRF-efz6nq8ws`. Veremos na sessão seguinte que podemos configurar o hash gerado, bem como escolher o ambiente para renderizar um hash ou o nome da variável.
+
+### Configuração
+Ok, mas como eu faço isso funcionar? Let's configure these stuff!!!
+
+Perceba que as coisas começam a se repetir, principalmente na parte dos loaders e plugins.
 
 ```javascript
 /* webpack.config.js */
 
-// code... 
+//códigos...
 
 module.exports = {
   devtool: 'source-map',
   entry: entry,
   plugins: plugins,
   module: {
-    // Outros Loaders
-     {
-        test: /\.css$/, // Pegando todos os arquivos que terminam com .css
+    loaders: [
+      // Outros módulos
+       {
+        test: /\.css$/, // aplicando apenas em arquivos css
         loaders: [
-          'style-loader', 'css-loader' //Usando ambos Loaders
+          'style-loader', 'css-loader' // Definição do uso de ambos loaders.
+        ],
+        exclude: '/node_modules/'
+      }
+    ]
+  },
+  output: {
+    path: path.join(__dirname, 'dist'),
+    publicPath: '/dist/',
+    filename: 'bundle.js'
+  }
+}
+```
+
+Dessa maneira, basta subir o ambiente de dev ou fazer a build, que os nossos arquivos `.css` passarão a ser importados.
+
+> Obs(muito importante): Me perguntei se daria erro trocando a ordem dos loaders, da erro de compicação. A ordem correta é **style-loader** e depois **css-loader**.
+
+#### Deeper into **configuração**
+
+As configurações de ambos loaders definem opções que podemos passar para cada loader. Como estamos separando os ambientes (produção e desenvolvimento), vamos definir algumas configurações no css-loader para facilitar na hora de identificar qual estilo está aplicado, afinal, é impossível saber depois do hash gerado.
+
+```javascript
+/* webpack.config.js */
+
+// código
+
+/* Aqui, definimos que se for produção,
+será gerado o hash(base64) com apenas 10 caracteres.
+
+Entretanto, se for desenvolvimento, ele gerará uma classe com nome:
+caminho+nome-da-classe---local-do-estilo */
+const cssIdentifier = PRODUCTION
+  ? '[hash:base64:10]'
+  : '[path][name]---[local]'
+
+module.exports = {
+  devtool: 'source-map',
+  entry: entry,
+  plugins: plugins,
+  module: {
+    loaders: [
+      {
+        test: /\.js$/,
+        loaders: ['babel-loader'],
+        exclude: '/node_modules/'
+      }, {
+        test: /\.(png|jpg|gif)$/,
+        loaders: ['url-loader?limit=12000&name=images/[hash:12].[ext]'],
+        exclude: '/node_modules/'
+      }, {
+        test: /\.css$/,
+        loaders: [
+          'style-loader', 'css-loader?localIdentName=' + cssIdentifier //Passamos os parametros necessários
         ],
         exclude: '/node_modules/'
       }
@@ -703,3 +819,14 @@ module.exports = {
 }
 
 ```
+
+Caso você faça essa configuração e suba o ambiente de desenvolvimento, a classe gerada será a `src-style-global---box` ao invés do hash maluco!
+
+### Linkando arquivos separados
+
+... PENDENTE ...
+
+### Mais informações
+Para saber mais sobre o uso de css no webpack, acesse a documetação: [webpack css documentation](https://webpack.js.org/guides/code-splitting-css/)
+
+
