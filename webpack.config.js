@@ -1,5 +1,6 @@
 const path = require('path')
 const webpack = require('webpack')
+const ExtractTextPlugin = require('extract-text-webpack-plugin')
 
 const PRODUCTION = process.env.NODE_ENV === 'production'
 const DEVELOPMENT = process.env.NODE_ENV === 'development'
@@ -12,7 +13,8 @@ const plugins = PRODUCTION
   ? [
     new webpack
       .optimize
-      .UglifyJsPlugin()
+      .UglifyJsPlugin(),
+    new ExtractTextPlugin('style.css')
   ]
   : [new webpack.HotModuleReplacementPlugin()]
 
@@ -24,6 +26,14 @@ plugins.push(new webpack.DefinePlugin({
 const cssIdentifier = PRODUCTION
   ? '[hash:base64:10]'
   : '[path][name]---[local]'
+
+const cssLoader = PRODUCTION
+  ? ExtractTextPlugin.extract({
+    loader: 'css-loader?localIdentName=' + cssIdentifier
+  })
+  : [
+    'style-loader', 'css-loader?localIdentName=' + cssIdentifier
+  ]
 
 module.exports = {
   devtool: 'source-map',
@@ -41,9 +51,7 @@ module.exports = {
         exclude: '/node_modules/'
       }, {
         test: /\.css$/,
-        loaders: [
-          'style-loader', 'css-loader?localIdentName=' + cssIdentifier
-        ],
+        loaders: cssLoader,
         exclude: '/node_modules/'
       }
     ]

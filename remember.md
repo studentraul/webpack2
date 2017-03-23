@@ -824,6 +824,115 @@ Caso você faça essa configuração e suba o ambiente de desenvolvimento, a cla
 
 ### Linkando arquivos separados
 
+Até agora, vimos apenas as maneiras de fazer a inseração do CSS por uma tag `style` no `head`. Para fazer a inserção via um arquivo paralelo, teremos que utilizar um plugin chamado [`extract-text-webpack-plugin`](https://github.com/webpack-contrib/extract-text-webpack-plugin). O que ele vai fazer é pegar todo o CSS gerado e gerar um _bundle.css_. 
+
+Ter o bundle.css gerado, faz mais sentido em produção, uma vez que não é uma boa prática carregarmos todo o estilo junto com o html. Porém, para o ambiente de desenvolvimento pouco importa. Deste forma, assim como fizemos com outras configurações, criaremos uma condicional para validar se é ambiente de desenvolvimento ou produção para gerar ou não o bundle.
+
+#### Configuração
+
+O primeiro passo, como toda dependencia, precisamos fazer sua adição no projeto:
+
+`yarn add -S -D extract-text-webpack-plugin`
+
+Em seguida, alguns ajustes no `webpack.config.js`:
+
+```javascript
+/* webpack.config.js */
+const path = require('path')
+const webpack = require('webpack')
+const ExtractTextPlugin = require('extract-text-webpack-plugin') // Aqui fazeremos o require dele
+
+const PRODUCTION = process.env.NODE_ENV === 'production'
+const DEVELOPMENT = process.env.NODE_ENV === 'development'
+
+const entry = PRODUCTION
+  ? ['./src/index.js']
+  : ['./src/index.js', 'webpack/hot/dev-server', 'webpack-dev-server/client?http://localhost:8080']
+
+const plugins = PRODUCTION
+  ? [
+    new webpack
+      .optimize
+      .UglifyJsPlugin(),
+    new ExtractTextPlugin('style.css') // Criamos uma nova instancia, passandos as configurações. No caso, pelo menos o Nome do arquivo (bundle) que deverá ser gerado
+  ]
+  : [new webpack.HotModuleReplacementPlugin()]
+
+plugins.push(new webpack.DefinePlugin({
+  PRODUCTION: JSON.stringify(PRODUCTION),
+  DEVELOPMENT: JSON.stringify(DEVELOPMENT)
+}))
+
+const cssIdentifier = PRODUCTION
+  ? '[hash:base64:10]'
+  : '[path][name]---[local]'
+
+/* Nova Constante 
+Aqui, faremos a condicional. Caso seja produção, passaremos o extract-text para gerar o css
+caso não, manteremos o que haviamos configurado anteriormente (style+css-loader)
+*/
+const cssLoader = PRODUCTION
+  ? ExtractTextPlugin.extract({
+    loader: 'css-loader?localIdentName=' + cssIdentifier
+  })
+  : [
+    'style-loader', 'css-loader?localIdentName=' + cssIdentifier
+  ]
+
+module.exports = {
+  devtool: 'source-map',
+  entry: entry,
+  plugins: plugins,
+  module: {
+    loaders: [
+      {
+        test: /\.js$/,
+        loaders: ['babel-loader'],
+        exclude: '/node_modules/'
+      }, {
+        test: /\.(png|jpg|gif)$/,
+        loaders: ['url-loader?limit=12000&name=images/[hash:12].[ext]'],
+        exclude: '/node_modules/'
+      }, {
+        test: /\.css$/,
+        loaders: cssLoader, // Passamos a constante criada
+        exclude: '/node_modules/'
+      }
+    ]
+  },
+  output: {
+    path: path.join(__dirname, 'dist'),
+    publicPath: '/dist/',
+    filename: 'bundle.js'
+  }
+}
+
+```
+
+Além disso, precisamos fazer a importação no nosso index.html. 
+
+> Obs.: Veremos mais a frente formas de não precisar adicionar manualmente o link de css.
+
+```html
+<!-- code... -->
+<link rel="stylesheet" href="../dist/style.css">
+<!-- code... -->
+```
+
+Para validar se deu sucesso, basta rodar o comando `yarn build` e inspecionar o fonte. O console que será executado será semelhante ao abaixo:
+
+```bash
+loader option has been deprecated - replace with "use"
+Hash: 5177bb97bdb43a5844bb
+Version: webpack 2.2.1
+Time: 2112ms
+        Asset       Size  Chunks             Chunk Names
+    bundle.js  890 bytes       0  [emitted]  main
+    style.css  164 bytes       0  [emitted]  main
+style.css.map   86 bytes       0  [emitted]  main
+```
+### Cache
+
 ... PENDENTE ...
 
 ### Mais informações
